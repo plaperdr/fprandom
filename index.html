@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>FP Random demo</title>
+</head>
+<body>
+    <h1>FP Random demo</h1>
+    <button type="button" onclick="run()">Run tests</button>
+    <h3>Canvas</h3>
+    <canvas id="canvas" height="60" width="400"></canvas>
+    <h3>Audio Hash & Sum</h3>
+    <div id="audioHash"></div><br>
+    <div id="audioSum"></div>
+    <h3>Order of navigator's properties <br>(less frequent changes because of cache)</h3>
+    <div id="order"></div>
+    <h3>Results</h3>
+    <table id="table" style="width:50%" border="1">
+        <tr>
+            <th>Test</th>
+            <th>Canvas hash</th>
+            <th>Audio hash</th>
+            <th>Audio sum</th>
+            <th>Order</th>
+        </tr>
+        <tbody>
+        </tbody>
+    </table>
+
+    <script type="text/javascript" src="demo/sha1.js"></script>
+    <script type="text/javascript" src="demo/main.js"></script>
+</body>
+</html>

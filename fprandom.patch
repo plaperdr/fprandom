@@ -1,0 +1,644 @@
+diff --git a/browser/app/profile/firefox.js b/browser/app/profile/firefox.js
+--- a/browser/app/profile/firefox.js
++++ b/browser/app/profile/firefox.js
+@@ -1109,9 +1109,12 @@ pref("services.sync.prefs.sync.privacy.c
+ pref("services.sync.prefs.sync.privacy.clearOnShutdown.sessions", true);
+ pref("services.sync.prefs.sync.privacy.clearOnShutdown.siteSettings", true);
+ pref("services.sync.prefs.sync.privacy.donottrackheader.enabled", true);
++pref("services.sync.prefs.sync.privacy.donotfingerprintheader.enabled", true);
+ pref("services.sync.prefs.sync.privacy.sanitize.sanitizeOnShutdown", true);
+ pref("services.sync.prefs.sync.privacy.trackingprotection.enabled", true);
+ pref("services.sync.prefs.sync.privacy.trackingprotection.pbmode.enabled", true);
++pref("services.sync.prefs.sync.privacy.fingerprintingprotection.enabled", true);
++pref("services.sync.prefs.sync.privacy.fingerprintingprotection.pbmode.enabled", true);
+ pref("services.sync.prefs.sync.security.OCSP.enabled", true);
+ pref("services.sync.prefs.sync.security.OCSP.require", true);
+ pref("services.sync.prefs.sync.security.default_personal_cert", true);
+@@ -1413,8 +1416,10 @@ pref("media.gmp-provider.enabled", true)
+ 
+ #ifdef NIGHTLY_BUILD
+ pref("privacy.trackingprotection.ui.enabled", true);
++pref("privacy.fingerprintingprotection.ui.enabled", true);
+ #else
+ pref("privacy.trackingprotection.ui.enabled", false);
++pref("privacy.fingerprintingprotection.ui.enabled", true);
+ #endif
+ pref("privacy.trackingprotection.introCount", 0);
+ pref("privacy.trackingprotection.introURL", "https://www.mozilla.org/%LOCALE%/firefox/%VERSION%/tracking-protection/start/");
+diff --git a/browser/branding/unofficial/locales/en-US/brand.dtd b/browser/branding/unofficial/locales/en-US/brand.dtd
+--- a/browser/branding/unofficial/locales/en-US/brand.dtd
++++ b/browser/branding/unofficial/locales/en-US/brand.dtd
+@@ -2,8 +2,8 @@
+    - License, v. 2.0. If a copy of the MPL was not distributed with this
+    - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
+ 
+-<!ENTITY  brandShorterName      "Nightly">
+-<!ENTITY  brandShortName        "Nightly">
+-<!ENTITY  brandFullName         "Nightly">
++<!ENTITY  brandShorterName      "FP Random (DiverSE build)">
++<!ENTITY  brandShortName        "FP Random (DiverSE build)">
++<!ENTITY  brandFullName         "FP Random (DiverSE build)">
+ <!ENTITY  vendorShortName       "Mozilla">
+ <!ENTITY  trademarkInfo.part1   " ">
+diff --git a/browser/branding/unofficial/locales/en-US/brand.properties b/browser/branding/unofficial/locales/en-US/brand.properties
+--- a/browser/branding/unofficial/locales/en-US/brand.properties
++++ b/browser/branding/unofficial/locales/en-US/brand.properties
+@@ -2,9 +2,9 @@
+ # License, v. 2.0. If a copy of the MPL was not distributed with this
+ # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ 
+-brandShorterName=Nightly
+-brandShortName=Nightly
+-brandFullName=Nightly
++brandShorterName=FP Random (DiverSE build)
++brandShortName=FP Random (DiverSE build)
++brandFullName=FP Random (DiverSE build)
+ vendorShortName=Mozilla
+ 
+ syncBrandShortName=Sync
+diff --git a/browser/components/preferences/in-content/privacy.js b/browser/components/preferences/in-content/privacy.js
+--- a/browser/components/preferences/in-content/privacy.js
++++ b/browser/components/preferences/in-content/privacy.js
+@@ -52,6 +52,34 @@ var gPrivacyPane = {
+   },
+ 
+   /**
++   * Show the Fingerprinting Protection UI depending on the
++   * privacy.fingerprintingprotection.ui.enabled pref, and linkify its Learn More link
++   */
++  _initFingerprintingProtection: function () {
++    if (!Services.prefs.getBoolPref("privacy.fingerprintingprotection.ui.enabled")) {
++        return;
++      }
++
++    let link = document.getElementById("fingerprintingProtectionLearnMore");
++    let url = "https://amiunique.org/faq";
++    link.setAttribute("href", url);
++
++    this.fingerprintingProtectionReadPrefs();
++
++    document.getElementById("fingerprintingprotectionbox").hidden = false;
++    document.getElementById("fingerprintingprotectionpbmbox").hidden = true;
++  },
++
++  /**
++   * Linkify the Learn More link of the Private Browsing Mode Fingerprinting
++   * Protection UI.
++   */
++  _initFingerprintingProtectionPBM: function () {
++    let link = document.getElementById("fingerprintingProtectionPBMLearnMore");
++    let url = "https://amiunique.org/faq";
++    link.setAttribute("href", url);
++  },
++  /**
+    * Initialize autocomplete to ensure prefs are in sync.
+    */
+   _initAutocomplete: function () {
+@@ -131,6 +159,8 @@ var gPrivacyPane = {
+     this.initAutoStartPrivateBrowsingReverter();
+     this._initTrackingProtection();
+     this._initTrackingProtectionPBM();
++    this._initFingerprintingProtection();
++    this._initFingerprintingProtectionPBM();
+     this._initAutocomplete();
+     this._initBrowserContainers();
+ 
+@@ -176,6 +206,8 @@ var gPrivacyPane = {
+                      gPrivacyPane.showBlockLists);
+     setEventListener("changeBlockListPBM", "command",
+                      gPrivacyPane.showBlockLists);
++    setEventListener("fingerprintingProtectionRadioGroup", "command",
++                     gPrivacyPane.fingerprintingProtectionWritePrefs);
+     setEventListener("browserContainersCheckbox", "command",
+                      gPrivacyPane._checkBrowserContainers);
+   },
+@@ -224,6 +256,47 @@ var gPrivacyPane = {
+     }
+   },
+ 
++  // Fingerprinting PROTECTION MODE
++
++  /**
++   * Selects the right item of the Fingerprinting Protection radiogroup.
++   */
++  fingerprintingProtectionReadPrefs() {
++    let enabledPref = document.getElementById("privacy.fingerprintingprotection.enabled");
++    let pbmPref = document.getElementById("privacy.fingerprintingprotection.pbmode.enabled");
++    let radiogroup = document.getElementById("fingerprintingProtectionRadioGroup");
++
++    // Global enable takes precedence over enabled in Private Browsing.
++    radiogroup.value = enabledPref.value ? "always" :
++        pbmPref.value ? "private" :
++            "never";
++  },
++
++  /**
++   * Sets the pref values based on the selected item of the radiogroup.
++   */
++  fingerprintingProtectionWritePrefs() {
++    let enabledPref = document.getElementById("privacy.fingerprintingprotection.enabled");
++    let pbmPref = document.getElementById("privacy.fingerprintingprotection.pbmode.enabled");
++    let radiogroup = document.getElementById("fingerprintingProtectionRadioGroup");
++    console.log("INSIDE WRITE PREFS");
++    console.log(radiogroup.value);
++    switch (radiogroup.value) {
++      case "always":
++        enabledPref.value = true;
++        pbmPref.value = true;
++        break;
++      case "private":
++        enabledPref.value = false;
++        pbmPref.value = true;
++        break;
++      case "never":
++        enabledPref.value = false;
++        pbmPref.value = false;
++        break;
++    }
++  },
++
+   // HISTORY MODE
+ 
+   /**
+diff --git a/browser/components/preferences/in-content/privacy.xul b/browser/components/preferences/in-content/privacy.xul
+--- a/browser/components/preferences/in-content/privacy.xul
++++ b/browser/components/preferences/in-content/privacy.xul
+@@ -45,6 +45,14 @@
+               name="browser.urlbar.suggest.openpage"
+               type="bool"/>
+ 
++  <!-- Fingerprinting -->
++  <preference id="privacy.fingerprintingprotection.enabled"
++              name="privacy.fingerprintingprotection.enabled"
++              type="bool"/>
++  <preference id="privacy.fingerprintingprotection.pbmode.enabled"
++              name="privacy.fingerprintingprotection.pbmode.enabled"
++              type="bool"/>
++
+   <!-- History -->
+   <preference id="places.history.enabled"
+               name="places.history.enabled"
+@@ -294,3 +302,46 @@
+               accesskey="&browserContainersEnabled.accesskey;" />
+   </vbox>
+ </groupbox>
++
++<!-- Fingerprinting -->
++<groupbox id="fingerprintingGroup" data-category="panePrivacy" hidden="true">
++<vbox id="fingerprintingprotectionbox" hidden="true">
++  <hbox align="start">
++    <vbox>
++      <caption><label>&fingerprintingProtectionHeader.label;
++        <label id="fingerprintingProtectionLearnMore" class="text-link"
++               value="&fingerprintingProtectionLearnMore.label;"/>
++      </label></caption>
++      <radiogroup id="fingerprintingProtectionRadioGroup">
++        <radio value="always"
++               label="&fingerprintingProtectionAlways.label;"
++               accesskey="&fingerprintingProtectionAlways.accesskey;"/>
++        <radio value="private"
++               label="&fingerprintingProtectionPrivate.label;"
++               accesskey="&fingerprintingProtectionPrivate.accesskey;"/>
++        <radio value="never"
++               label="&fingerprintingProtectionNever.label;"
++               accesskey="&fingerprintingProtectionNever.accesskey;"/>
++      </radiogroup>
++    </vbox>
++    <spacer flex="1" />
++    <vbox>
++
++    </vbox>
++  </hbox>
++</vbox>
++<vbox id="fingerprintingprotectionpbmbox">
++  <caption><label>&fingerprinting.label;</label></caption>
++  <hbox align="center">
++    <checkbox id="fingerprintingProtectionPBM"
++              preference="privacy.fingerprintingprotection.pbmode.enabled"
++              accesskey="&fingerprintingProtectionPBM5.accesskey;"
++              label="&fingerprintingProtectionPBM5.label;" />
++    <label id="fingerprintingProtectionPBMLearnMore"
++           class="text-link"
++           value="&fingerprintingProtectionPBMLearnMore.label;"/>
++    <spacer flex="1" />
++
++  </hbox>
++</vbox>
++</groupbox>
+diff --git a/browser/locales/en-US/chrome/browser/preferences/privacy.dtd b/browser/locales/en-US/chrome/browser/preferences/privacy.dtd
+--- a/browser/locales/en-US/chrome/browser/preferences/privacy.dtd
++++ b/browser/locales/en-US/chrome/browser/preferences/privacy.dtd
+@@ -26,6 +26,20 @@
+ <!ENTITY  doNotTrack.settings.label     "manage your Do Not Track settings">
+ <!ENTITY  doNotTrack.post.label         ".">
+ 
++<!ENTITY  fingerprintingProtectionHeader.label       "Use Fingerprinting Protection">
++<!ENTITY  fingerprintingProtectionAlways.label       "Always">
++<!ENTITY  fingerprintingProtectionAlways.accesskey   "1">
++<!ENTITY  fingerprintingProtectionPrivate.label      "Only in private windows">
++<!ENTITY  fingerprintingProtectionPrivate.accesskey  "2">
++<!ENTITY  fingerprintingProtectionNever.label        "Never">
++<!ENTITY  fingerprintingProtectionNever.accesskey    "3">
++<!ENTITY  fingerprintingProtectionLearnMore.label    "Learn more">
++
++<!ENTITY fingerprinting.label                 "Fingerprinting">
++<!ENTITY fingerprintingProtectionPBM5.label         "Use Fingerprinting Protection in Private Windows">
++<!ENTITY fingerprintingProtectionPBM5.accesskey     "5">
++<!ENTITY fingerprintingProtectionPBMLearnMore.label "Learn more">
++
+ <!ENTITY  history.label                 "History">
+ 
+ <!ENTITY  locationBar.label             "Location Bar">
+diff --git a/dom/canvas/CanvasRenderingContext2D.cpp b/dom/canvas/CanvasRenderingContext2D.cpp
+--- a/dom/canvas/CanvasRenderingContext2D.cpp
++++ b/dom/canvas/CanvasRenderingContext2D.cpp
+@@ -24,6 +24,7 @@
+ #include "nsIInterfaceRequestorUtils.h"
+ #include "nsIFrame.h"
+ #include "nsError.h"
++#include "nsIFontEnumerator.h"
+ 
+ #include "nsCSSParser.h"
+ #include "mozilla/css/StyleRule.h"
+@@ -1105,6 +1106,24 @@ CanvasRenderingContext2D::WrapObject(JSC
+   return CanvasRenderingContext2DBinding::Wrap(aCx, this, aGivenProto);
+ }
+ 
++int
++getModifiedColor(int color)
++{
++  int32_t MIN_HEX_CODE = 0;
++  int32_t MAX_HEX_CODE = 255;
++  int randomNum;
++  int newColor;
++  while (1) {
++    //Range from -3 to +3
++    randomNum = rand() % 7;
++    newColor = color - 3 + randomNum;
++    if (MIN_HEX_CODE <= newColor &&  newColor <= MAX_HEX_CODE) {
++        break;
++    }
++  }
++  return newColor;
++}
++
+ bool
+ CanvasRenderingContext2D::ParseColor(const nsAString& aString,
+                                      nscolor* aColor)
+@@ -1138,6 +1157,18 @@ CanvasRenderingContext2D::ParseColor(con
+       value, presShell ? presShell->GetPresContext() : nullptr, parentContext,
+       *aColor);
+   }
++
++  if (mozilla::Preferences::GetBool("privacy.fingerprintingprotection.enabled", true)) {
++    int r(NS_GET_R(*aColor));
++    int g(NS_GET_G(*aColor));
++    int b(NS_GET_B(*aColor));
++    int a(NS_GET_A(*aColor));
++    r = getModifiedColor(r);
++    g = getModifiedColor(g);
++    b = getModifiedColor(b);
++    *aColor = NS_RGBA(r, g, b, a);
++  }
++
+   return true;
+ }
+ 
+@@ -3531,12 +3562,43 @@ CanvasRenderingContext2D::TransformWillU
+ //
+ // text
+ //
++nsString ModifyFont(const nsAString& aFont) {
++    nsresult rv;
++    nsCOMPtr <nsIFontEnumerator> fontEnum = do_GetService("@mozilla.org/gfx/fontenumerator;1", &rv);
++
++    uint32_t count_fonts;
++    char16_t **fonts;
++    const char *aLangGroup = "en";
++    const char *aGeneric = "sans-serif";
++    fontEnum->EnumerateFonts(aLangGroup, aGeneric, &count_fonts, &fonts);
++
++    int randomNum = rand() % count_fonts;
++    nsString font;
++    font.Assign(fonts[randomNum]);
++    nsString end = NS_LITERAL_STRING("'");
++    int pos = aFont.FindChar(' ');
++    const nsAString &starting = Substring(aFont, 0, pos);
++    nsString userfont(starting);
++    userfont.Append(NS_LITERAL_STRING(" '"));
++    userfont.Append(font);
++    userfont.Append(end);
++
++  return userfont;
++
++}
+ 
+ void
+ CanvasRenderingContext2D::SetFont(const nsAString& aFont,
+                                   ErrorResult& aError)
+ {
+-  SetFontInternal(aFont, aError);
++  nsString userfont;
++  if (mozilla::Preferences::GetBool("privacy.fingerprintingprotection.enabled", true)) {
++    userfont = ModifyFont(aFont);
++  }
++  else {
++    userfont = aFont;
++  }
++  SetFontInternal(userfont, aError);
+ }
+ 
+ bool
+diff --git a/dom/media/webaudio/AudioNodeEngine.cpp b/dom/media/webaudio/AudioNodeEngine.cpp
+--- a/dom/media/webaudio/AudioNodeEngine.cpp
++++ b/dom/media/webaudio/AudioNodeEngine.cpp
+@@ -51,16 +51,32 @@ WriteZeroesToAudioBlock(AudioBlock* aChu
+   }
+ }
+ 
++float getNewScale(float aScale){
++  if(aScale>0.05){
++    return aScale - rand() / ( RAND_MAX / 0.001 );
++  } else {
++    return aScale;
++  };
++}
++int prob = 10;//10%
++
+ void AudioBufferCopyWithScale(const float* aInput,
+                               float aScale,
+                               float* aOutput,
+                               uint32_t aSize)
+ {
+-  if (aScale == 1.0f) {
+-    PodCopy(aOutput, aInput, aSize);
++  if (rand() % prob == 1 && mozilla::Preferences::GetBool("privacy.fingerprintingprotection.enabled", true)) {
++    float newScale = getNewScale(aScale);
++    for (uint32_t i = 0; i < aSize; ++i) {
++      aOutput[i] = aInput[i] * newScale;
++    }
+   } else {
+-    for (uint32_t i = 0; i < aSize; ++i) {
+-      aOutput[i] = aInput[i]*aScale;
++    if (aScale == 1.0f) {
++      PodCopy(aOutput, aInput, aSize);
++    } else {
++      for (uint32_t i = 0; i < aSize; ++i) {
++        aOutput[i] = aInput[i] * aScale;
++      }
+     }
+   }
+ }
+@@ -70,52 +86,60 @@ void AudioBufferAddWithScale(const float
+                              float* aOutput,
+                              uint32_t aSize)
+ {
++
++  if (rand() % prob == 1 && mozilla::Preferences::GetBool("privacy.fingerprintingprotection.enabled", true)) {
++    float newScale = getNewScale(aScale);
++    for (uint32_t i = 0; i < aSize; ++i) {
++      aOutput[i] += aInput[i] * newScale;
++    }
++  } else {
+ #ifdef BUILD_ARM_NEON
+-  if (mozilla::supports_neon()) {
+-    AudioBufferAddWithScale_NEON(aInput, aScale, aOutput, aSize);
+-    return;
+-  }
++    if (mozilla::supports_neon()) {
++      AudioBufferAddWithScale_NEON(aInput, aScale, aOutput, aSize);
++      return;
++    }
+ #endif
+ 
+ #ifdef USE_SSE2
+-  if (mozilla::supports_sse2()) {
++    if (mozilla::supports_sse2()) {
++      if (aScale == 1.0f) {
++        while (aSize && (!IS_ALIGNED16(aInput) || !IS_ALIGNED16(aOutput))) {
++          *aOutput += *aInput;
++          ++aOutput;
++          ++aInput;
++          --aSize;
++        }
++      } else {
++        while (aSize && (!IS_ALIGNED16(aInput) || !IS_ALIGNED16(aOutput))) {
++          *aOutput += *aInput*aScale;
++          ++aOutput;
++          ++aInput;
++          --aSize;
++        }
++      }
++
++      // we need to round aSize down to the nearest multiple of 16
++      uint32_t alignedSize = aSize & ~0x0F;
++      if (alignedSize > 0) {
++        AudioBufferAddWithScale_SSE(aInput, aScale, aOutput, alignedSize);
++
++        // adjust parameters for use with scalar operations below
++        aInput += alignedSize;
++        aOutput += alignedSize;
++        aSize -= alignedSize;
++      }
++    }
++#endif
++
+     if (aScale == 1.0f) {
+-      while (aSize && (!IS_ALIGNED16(aInput) || !IS_ALIGNED16(aOutput))) {
+-        *aOutput += *aInput;
+-        ++aOutput;
+-        ++aInput;
+-        --aSize;
++      for (uint32_t i = 0; i < aSize; ++i) {
++        aOutput[i] += aInput[i];
+       }
+     } else {
+-      while (aSize && (!IS_ALIGNED16(aInput) || !IS_ALIGNED16(aOutput))) {
+-        *aOutput += *aInput*aScale;
+-        ++aOutput;
+-        ++aInput;
+-        --aSize;
++      for (uint32_t i = 0; i < aSize; ++i) {
++        aOutput[i] += aInput[i] * aScale;
+       }
+     }
+-
+-    // we need to round aSize down to the nearest multiple of 16
+-    uint32_t alignedSize = aSize & ~0x0F;
+-    if (alignedSize > 0) {
+-      AudioBufferAddWithScale_SSE(aInput, aScale, aOutput, alignedSize);
+-
+-      // adjust parameters for use with scalar operations below
+-      aInput += alignedSize;
+-      aOutput += alignedSize;
+-      aSize -= alignedSize;
+-    }
+-  }
+-#endif
+-
+-  if (aScale == 1.0f) {
+-    for (uint32_t i = 0; i < aSize; ++i) {
+-      aOutput[i] += aInput[i];
+-    }
+-  } else {
+-    for (uint32_t i = 0; i < aSize; ++i) {
+-      aOutput[i] += aInput[i]*aScale;
+-    }
+   }
+ }
+ 
+@@ -132,25 +156,33 @@ AudioBlockCopyChannelWithScale(const flo
+                                float aScale,
+                                float* aOutput)
+ {
+-  if (aScale == 1.0f) {
+-    memcpy(aOutput, aInput, WEBAUDIO_BLOCK_SIZE*sizeof(float));
++  if (rand() % prob == 1 && mozilla::Preferences::GetBool("privacy.fingerprintingprotection.enabled", true)) {
++    float newScale = getNewScale(aScale);
++    for (uint32_t i = 0; i < WEBAUDIO_BLOCK_SIZE; ++i) {
++      aOutput[i] = aInput[i] * newScale;
++    }
+   } else {
++    if (aScale == 1.0f) {
++      memcpy(aOutput, aInput, WEBAUDIO_BLOCK_SIZE*sizeof(float));
++    } else {
+ #ifdef BUILD_ARM_NEON
+-    if (mozilla::supports_neon()) {
+-      AudioBlockCopyChannelWithScale_NEON(aInput, aScale, aOutput);
+-      return;
+-    }
++      if (mozilla::supports_neon()) {
++        AudioBlockCopyChannelWithScale_NEON(aInput, aScale, aOutput);
++        return;
++      }
+ #endif
+ 
+ #ifdef USE_SSE2
+-    if (mozilla::supports_sse2()) {
+-      AudioBlockCopyChannelWithScale_SSE(aInput, aScale, aOutput);
+-      return;
+-    }
++      if (mozilla::supports_sse2()) {
++        //cout << "I'm IN HERE!!\n";
++        AudioBlockCopyChannelWithScale_SSE(aInput, aScale, aOutput);
++        return;
++      }
+ #endif
+ 
+-    for (uint32_t i = 0; i < WEBAUDIO_BLOCK_SIZE; ++i) {
+-      aOutput[i] = aInput[i]*aScale;
++      for (uint32_t i = 0; i < WEBAUDIO_BLOCK_SIZE; ++i) {
++        aOutput[i] = aInput[i] * aScale;
++      }
+     }
+   }
+ }
+@@ -230,25 +262,32 @@ AudioBufferInPlaceScale(float* aBlock,
+                         float aScale,
+                         uint32_t aSize)
+ {
+-  if (aScale == 1.0f) {
+-    return;
+-  }
++  if (rand() % prob == 1 && mozilla::Preferences::GetBool("privacy.fingerprintingprotection.enabled", true)) {
++    float newScale = getNewScale(aScale);
++    for (uint32_t i = 0; i < aSize; ++i) {
++      *aBlock++ *=  newScale;
++    }
++  } else {
++    if (aScale == 1.0f) {
++      return;
++    }
+ #ifdef BUILD_ARM_NEON
+-  if (mozilla::supports_neon()) {
+-    AudioBufferInPlaceScale_NEON(aBlock, aScale, aSize);
+-    return;
+-  }
++    if (mozilla::supports_neon()) {
++      AudioBufferInPlaceScale_NEON(aBlock, aScale, aSize);
++      return;
++    }
+ #endif
+ 
+ #ifdef USE_SSE2
+-  if (mozilla::supports_sse2()) {
+-    AudioBufferInPlaceScale_SSE(aBlock, aScale, aSize);
+-    return;
+-  }
++    if (mozilla::supports_sse2()) {
++      AudioBufferInPlaceScale_SSE(aBlock, aScale, aSize);
++      return;
++    }
+ #endif
+ 
+-  for (uint32_t i = 0; i < aSize; ++i) {
+-    *aBlock++ *= aScale;
++    for (uint32_t i = 0; i < aSize; ++i) {
++      *aBlock++ *= aScale;
++    }
+   }
+ }
+ 
+diff --git a/js/src/jsiter.cpp b/js/src/jsiter.cpp
+--- a/js/src/jsiter.cpp
++++ b/js/src/jsiter.cpp
+@@ -38,6 +38,7 @@
+ #include "vm/NativeObject-inl.h"
+ #include "vm/Stack-inl.h"
+ #include "vm/String-inl.h"
++#include <random>
+ 
+ using namespace js;
+ using namespace js::gc;
+@@ -284,7 +285,7 @@ EnumerateNativeProperties(JSContext* cx,
+     return true;
+ }
+ 
+-#ifdef JS_MORE_DETERMINISTIC
++//#ifdef JS_MORE_DETERMINISTIC
+ 
+ struct SortComparatorIds
+ {
+@@ -295,6 +296,10 @@ struct SortComparatorIds
+ 
+     bool operator()(jsid a, jsid b, bool* lessOrEqualp)
+     {
++
++        *lessOrEqualp = (rand() % 2 == 1);
++        return true;
++        /*
+         // Pick an arbitrary order on jsids that is as stable as possible
+         // across executions.
+         if (a == b) {
+@@ -348,11 +353,11 @@ struct SortComparatorIds
+             return false;
+ 
+         *lessOrEqualp = (result <= 0);
+-        return true;
++        return true; */
+     }
+ };
+ 
+-#endif /* JS_MORE_DETERMINISTIC */
++//#endif /* JS_MORE_DETERMINISTIC */
+ 
+ static bool
+ Snapshot(JSContext* cx, HandleObject pobj_, unsigned flags, AutoIdVector* props)
+@@ -435,7 +440,7 @@ Snapshot(JSContext* cx, HandleObject pob
+ 
+     } while (pobj != nullptr);
+ 
+-#ifdef JS_MORE_DETERMINISTIC
++//#ifdef JS_MORE_DETERMINISTIC
+ 
+     /*
+      * In some cases the enumeration order for an object depends on the
+@@ -463,7 +468,7 @@ Snapshot(JSContext* cx, HandleObject pob
+     if (!MergeSort(ids, n, tmp.begin(), SortComparatorIds(cx)))
+         return false;
+ 
+-#endif /* JS_MORE_DETERMINISTIC */
++//#endif /* JS_MORE_DETERMINISTIC */
+ 
+     return true;
+ }
