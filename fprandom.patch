@@ -1,7 +1,7 @@
 diff --git a/browser/app/profile/firefox.js b/browser/app/profile/firefox.js
 --- a/browser/app/profile/firefox.js
 +++ b/browser/app/profile/firefox.js
-@@ -1109,9 +1109,12 @@ pref("services.sync.prefs.sync.privacy.c
+@@ -1103,9 +1103,12 @@ pref("services.sync.prefs.sync.privacy.c
  pref("services.sync.prefs.sync.privacy.clearOnShutdown.sessions", true);
  pref("services.sync.prefs.sync.privacy.clearOnShutdown.siteSettings", true);
  pref("services.sync.prefs.sync.privacy.donottrackheader.enabled", true);
@@ -14,7 +14,7 @@ diff --git a/browser/app/profile/firefox.js b/browser/app/profile/firefox.js
  pref("services.sync.prefs.sync.security.OCSP.enabled", true);
  pref("services.sync.prefs.sync.security.OCSP.require", true);
  pref("services.sync.prefs.sync.security.default_personal_cert", true);
-@@ -1413,8 +1416,10 @@ pref("media.gmp-provider.enabled", true)
+@@ -1405,8 +1408,10 @@ pref("media.gmp-provider.enabled", true)
  
  #ifdef NIGHTLY_BUILD
  pref("privacy.trackingprotection.ui.enabled", true);
@@ -66,7 +66,7 @@ diff --git a/browser/components/preferences/in-content/privacy.js b/browser/comp
 +   * Show the Fingerprinting Protection UI depending on the
 +   * privacy.fingerprintingprotection.ui.enabled pref, and linkify its Learn More link
 +   */
-+  _initFingerprintingProtection: function () {
++  _initFingerprintingProtection: function() {
 +    if (!Services.prefs.getBoolPref("privacy.fingerprintingprotection.ui.enabled")) {
 +        return;
 +      }
@@ -85,7 +85,7 @@ diff --git a/browser/components/preferences/in-content/privacy.js b/browser/comp
 +   * Linkify the Learn More link of the Private Browsing Mode Fingerprinting
 +   * Protection UI.
 +   */
-+  _initFingerprintingProtectionPBM: function () {
++  _initFingerprintingProtectionPBM: function() {
 +    let link = document.getElementById("fingerprintingProtectionPBMLearnMore");
 +    let url = "https://amiunique.org/faq";
 +    link.setAttribute("href", url);
@@ -93,7 +93,7 @@ diff --git a/browser/components/preferences/in-content/privacy.js b/browser/comp
 +  /**
     * Initialize autocomplete to ensure prefs are in sync.
     */
-   _initAutocomplete: function () {
+   _initAutocomplete: function() {
 @@ -131,6 +159,8 @@ var gPrivacyPane = {
      this.initAutoStartPrivateBrowsingReverter();
      this._initTrackingProtection();
@@ -111,8 +111,8 @@ diff --git a/browser/components/preferences/in-content/privacy.js b/browser/comp
 +                     gPrivacyPane.fingerprintingProtectionWritePrefs);
      setEventListener("browserContainersCheckbox", "command",
                       gPrivacyPane._checkBrowserContainers);
-   },
-@@ -224,6 +256,47 @@ var gPrivacyPane = {
+     setEventListener("browserContainersSettings", "command",
+@@ -226,6 +258,45 @@ var gPrivacyPane = {
      }
    },
  
@@ -139,8 +139,6 @@ diff --git a/browser/components/preferences/in-content/privacy.js b/browser/comp
 +    let enabledPref = document.getElementById("privacy.fingerprintingprotection.enabled");
 +    let pbmPref = document.getElementById("privacy.fingerprintingprotection.pbmode.enabled");
 +    let radiogroup = document.getElementById("fingerprintingProtectionRadioGroup");
-+    console.log("INSIDE WRITE PREFS");
-+    console.log(radiogroup.value);
 +    switch (radiogroup.value) {
 +      case "always":
 +        enabledPref.value = true;
@@ -178,8 +176,8 @@ diff --git a/browser/components/preferences/in-content/privacy.xul b/browser/com
    <!-- History -->
    <preference id="places.history.enabled"
                name="places.history.enabled"
-@@ -294,3 +302,46 @@
-               accesskey="&browserContainersEnabled.accesskey;" />
+@@ -306,3 +314,46 @@
+     </hbox>
    </vbox>
  </groupbox>
 +
@@ -260,7 +258,7 @@ diff --git a/dom/canvas/CanvasRenderingContext2D.cpp b/dom/canvas/CanvasRenderin
  
  #include "nsCSSParser.h"
  #include "mozilla/css/StyleRule.h"
-@@ -1105,6 +1106,24 @@ CanvasRenderingContext2D::WrapObject(JSC
+@@ -1106,6 +1107,24 @@ CanvasRenderingContext2D::WrapObject(JSC
    return CanvasRenderingContext2DBinding::Wrap(aCx, this, aGivenProto);
  }
  
@@ -285,7 +283,7 @@ diff --git a/dom/canvas/CanvasRenderingContext2D.cpp b/dom/canvas/CanvasRenderin
  bool
  CanvasRenderingContext2D::ParseColor(const nsAString& aString,
                                       nscolor* aColor)
-@@ -1138,6 +1157,18 @@ CanvasRenderingContext2D::ParseColor(con
+@@ -1139,6 +1158,18 @@ CanvasRenderingContext2D::ParseColor(con
        value, presShell ? presShell->GetPresContext() : nullptr, parentContext,
        *aColor);
    }
@@ -304,7 +302,7 @@ diff --git a/dom/canvas/CanvasRenderingContext2D.cpp b/dom/canvas/CanvasRenderin
    return true;
  }
  
-@@ -3531,12 +3562,43 @@ CanvasRenderingContext2D::TransformWillU
+@@ -3557,12 +3588,42 @@ CanvasRenderingContext2D::TransformWillU
  //
  // text
  //
@@ -330,7 +328,6 @@ diff --git a/dom/canvas/CanvasRenderingContext2D.cpp b/dom/canvas/CanvasRenderin
 +    userfont.Append(end);
 +
 +  return userfont;
-+
 +}
  
  void
