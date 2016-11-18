@@ -44,7 +44,7 @@ profile, you can execute the following command:
     
 ###Demo
 You can use the demo page at
-[https://plaperdr.github.io/fprandom](https://plaperdr.github.io/fprandom)
+[https://plaperdr.github.io/fprandom/](https://plaperdr.github.io/fprandom/)
 to compare the impact of FPRandom with a vanilla version of Firefox or Chrome.
 By running the tests several times, you can see that FPRandom produces new values at every
 execution while a standard browser keeps the same stable ones.
