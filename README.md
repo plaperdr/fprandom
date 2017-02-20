@@ -4,7 +4,7 @@ Welcome to the official repository of FPRandom, a modified browser
 whose goal is to counter advanced fingerprinting techniques!
 
 ### The browser
-FPRandom is a modified version of Firefox 53, the latest Nightly version
+FPRandom is a modified version of Firefox 54, the latest Nightly version
 from Mozilla. FPRandom's primary goal is to break the stability and determinism
 of very specific fingerprinting techniques while preserving the best user experience possible.
 By introducing enough noise during the fingerprinting process, trackers are fooled and cannot bound 
@@ -14,16 +14,16 @@ multiple sessions impossible.
 ###The patch
 The **fprandom.patch** file contains the complete list of modifications brought
 to Firefox. The patch is structured as follows:
-* [From line 1 to 249](https://github.com/plaperdr/fprandom/blob/master/fprandom.patch#L1) -
-addition of an entry in the **Privacy** section of Firefox preferences to chose
-when the protection is activated ("Always", "Only in private windows" or "Never")
-* [From line 250 to 348](https://github.com/plaperdr/fprandom/blob/master/fprandom.patch#L250) -
+* [From line 1 to 259](https://github.com/plaperdr/fprandom/blob/master/fprandom.patch#L1) -
+addition of two entries in the **Privacy** section of Firefox preferences: choose
+when the protection is activated ("Always", "Only in private windows" or "Never") and select the desired "Randomization" strategy ("Always random" or "Per session")
+* [From line 260 to 392](https://github.com/plaperdr/fprandom/blob/master/fprandom.patch#L260) -
 modification of the **Canvas API** to change the browser's fallback font and add imperceptible
 variations to selected colors
-* [From line 349 to 578](https://github.com/plaperdr/fprandom/blob/master/fprandom.patch#L349) -
+* [From line 393 to 627](https://github.com/plaperdr/fprandom/blob/master/fprandom.patch#L393) -
 modification of the **AudioContext API** to reduce the volume of random parts of
 processed audio by a very small factor inaudible by the user
-* [From line 579 to 641](https://github.com/plaperdr/fprandom/blob/master/fprandom.patch#L579) -
+* [From line 628 to 720](https://github.com/plaperdr/fprandom/blob/master/fprandom.patch#L628) -
 modification of the iterator of JavaScript objects to change the **enumeration order** of properties
 and to prevent browser's unmasking
 
