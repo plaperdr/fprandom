@@ -1,4 +1,4 @@
-#FPRandom
+# FPRandom
 
 Welcome to the official repository of FPRandom, a modified browser
 whose goal is to counter advanced fingerprinting techniques!
@@ -11,7 +11,7 @@ By introducing enough noise during the fingerprinting process, trackers are fool
 a freshly collected fingerprint with an old one, thus rendering the tracking across
 multiple sessions impossible.
 
-###The patch
+### The patch
 The **fprandom.patch** file contains the complete list of modifications brought
 to Firefox. The patch is structured as follows:
 * [From line 1 to 259](https://github.com/plaperdr/fprandom/blob/master/fprandom.patch#L1) -
@@ -28,7 +28,7 @@ modification of the iterator of JavaScript objects to change the **enumeration o
 and to prevent browser's unmasking
 
 
-###The Linux prototype
+### The Linux prototype
 You can find a fully-compiled prototype of FPRandom for x64 Linux systems 
 in the _Release_ section of this repository 
 [HERE](https://github.com/plaperdr/fprandom/releases).
@@ -42,7 +42,7 @@ profile, you can execute the following command:
     ./firefox -no-remote -P "New profile"
     
     
-###Demo
+### Demo
 You can use the demo page at
 [https://plaperdr.github.io/fprandom/](https://plaperdr.github.io/fprandom/)
 to compare the impact of FPRandom with a vanilla version of Firefox or Chrome.
