@@ -4,12 +4,15 @@ Welcome to the official repository of FPRandom, a modified browser
 whose goal is to counter advanced fingerprinting techniques!
 
 ### The browser
-FPRandom is a modified version of Firefox 54, the latest Nightly version
+FPRandom is a modified version of the Nightly version of Firefox 54
 from Mozilla. FPRandom's primary goal is to break the stability and determinism
 of very specific fingerprinting techniques while preserving the best user experience possible.
 By introducing enough noise during the fingerprinting process, trackers are fooled and cannot bound 
 a freshly collected fingerprint with an old one, thus rendering the tracking across
-multiple sessions impossible.
+multiple sessions impossible. FPRandom is detailed in
+[a scientific publication](https://hal.inria.fr/hal-01527580/document) that has been presented at
+the [ESSoS 2017 conference](https://distrinet.cs.kuleuven.be/events/essos/2017/) where 
+it received a "Distinguished Artifact" award :trophy:.
 
 ### The patch
 The **fprandom.patch** file contains the complete list of modifications brought
